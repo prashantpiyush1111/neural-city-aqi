@@ -1,0 +1,47 @@
+name: PR Auto Checker
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Check index.html exists
+        run: |
+          if [ ! -f index.html ]; then
+            echo "❌ index.html missing!"
+            exit 1
+          else
+            echo "✅ index.html found"
+          fi
+
+      - name: Check for broken links in HTML
+        run: |
+          grep -oP '(?<=href=")[^"]+' index.html | grep "^http" | while read url; do
+            STATUS=$(curl -o /dev/null -s -w "%{http_code}" --max-time 10 "$url")
+            if [ "$STATUS" -ge 400 ]; then
+              echo "❌ Broken link: $url (Status: $STATUS)"
+              exit 1
+            else
+              echo "✅ OK: $url"
+            fi
+          done
+
+      - name: Check HTML is valid (not empty)
+        run: |
+          SIZE=$(wc -c < index.html)
+          if [ "$SIZE" -lt 500 ]; then
+            echo "❌ index.html too small — might be empty or broken"
+            exit 1
+          else
+            echo "✅ index.html size OK: $SIZE bytes"
+          fi
+
+      - name: All checks passed
+        run: echo "🎉 PR looks good! All checks passed."

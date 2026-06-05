@@ -386,21 +386,15 @@ footer a{color:var(--accent);text-decoration:none}
 <script>
 // Real CPCB 2023 annual average AQI values sourced from CPCB AQI Bulletins
 // Street scores derived from Neural City ranking parameters (walkability, road quality, cleanliness, footpaths)
-const cities = [
-  { name:"Pune",       rank:1,  score:72, walk:74, clean:68, aqi:101, state:"Maharashtra" },
-  { name:"Bengaluru",  rank:2,  score:70, walk:68, clean:72, aqi:93,  state:"Karnataka" },
-  { name:"Hyderabad",  rank:3,  score:68, walk:65, clean:70, aqi:118, state:"Telangana" },
-  { name:"Ahmedabad",  rank:4,  score:65, walk:62, clean:64, aqi:161, state:"Gujarat" },
-  { name:"Chennai",    rank:5,  score:64, walk:66, clean:61, aqi:95,  state:"Tamil Nadu" },
-  { name:"Kolkata",    rank:6,  score:61, walk:63, clean:55, aqi:192, state:"West Bengal" },
-  { name:"Mumbai",     rank:7,  score:60, walk:64, clean:58, aqi:145, state:"Maharashtra" },
-  { name:"Surat",      rank:8,  score:58, walk:56, clean:62, aqi:152, state:"Gujarat" },
-  { name:"Jaipur",     rank:9,  score:54, walk:52, clean:56, aqi:176, state:"Rajasthan" },
-  { name:"Lucknow",    rank:10, score:51, walk:49, clean:52, aqi:218, state:"UP" },
-  { name:"Delhi",      rank:11, score:48, walk:50, clean:44, aqi:289, state:"Delhi" },
-  { name:"Patna",      rank:12, score:42, walk:40, clean:44, aqi:252, state:"Bihar" },
-];
+ let cities = [];
 
+fetch('cities.json')
+  .then(response => response.json())
+  .then(data => {
+    cities = data;
+    renderAll(); // Data aate hi seedhe renderAll ko call kar diya!
+  })
+  .catch(err => console.error("Error loading JSON:", err));
 let activeFilter='all';
 
 function aqiM(aqi){

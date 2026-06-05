@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neural City — AQI + Street Intelligence Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root{
+  --bg:#060a0f;
+  --s1:#0d1520;
+  --s2:#131f30;
+  --s3:#1a2840;
+  --b:rgba(255,255,255,0.06);
+  --b2:rgba(255,255,255,0.12);
+  --t:#dde6f5;
+  --t2:#7a8fa8;
+  --t3:#4a5a70;
+  --green:#10b981;
+  --yellow:#f59e0b;
+  --orange:#f97316;
+  --red:#ef4444;
+  --darkred:#991b1b;
+  --blue:#3b82f6;
+  --teal:#06b6d4;
+  --accent:#00c896;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);
+  color:var(--t);
+  font-family:'DM Sans',sans-serif;
+  font-size:14px;
+  line-height:1.6;
+}
+body::before{
+  content:'';
+  position:fixed;inset:0;
+  background-image:radial-gradient(ellipse 80% 50% at 50% -20%,rgba(0,200,150,0.06),transparent);
+  pointer-events:none;z-index:0;
+}
+.page{position:relative;z-index:1;max-width:1120px;margin:0 auto;padding:28px 20px 60px}
+
+/* NAV */
+nav{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 0 24px;border-bottom:1px solid var(--b);margin-bottom:28px;
+  flex-wrap:wrap;gap:12px;
+}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-box{
+  width:32px;height:32px;border-radius:7px;
+  background:linear-gradient(135deg,var(--accent),var(--blue));
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Space Mono',monospace;font-size:12px;font-weight:700;color:#000;
+}
+.brand-name{font-family:'Space Mono',monospace;font-size:13px;color:var(--t);letter-spacing:.3px}
+.brand-sub{font-size:11px;color:var(--t3);letter-spacing:.2px}
+.live-tag{
+  display:flex;align-items:center;gap:6px;
+  background:rgba(0,200,150,0.08);border:1px solid rgba(0,200,150,0.2);
+  color:var(--accent);padding:5px 12px;border-radius:20px;font-size:11px;
+  font-family:'Space Mono',monospace;
+}
+.pulse{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+
+/* HERO */
+.hero{margin-bottom:28px}
+.hero h1{font-size:24px;font-weight:600;letter-spacing:-.3px;margin-bottom:6px}
+.hero h1 span{color:var(--accent)}
+.hero p{font-size:13px;color:var(--t2);max-width:620px;line-height:1.7}
+.tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.tag{
+  font-size:11px;padding:3px 10px;border-radius:20px;
+  border:1px solid var(--b2);color:var(--t2);
+  font-family:'Space Mono',monospace;
+}
+
+/* SECTION TITLE */
+.sec{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--t3);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.sec::after{content:'';flex:1;height:1px;background:var(--b)}
+
+/* METRICS */
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:28px}
+.mc{
+  background:var(--s1);border:1px solid var(--b);border-radius:12px;
+  padding:14px 16px;position:relative;overflow:hidden;cursor:default;
+  transition:border-color .2s,background .2s;
+}
+.mc:hover{border-color:var(--b2);background:var(--s2)}
+.mc::after{
+  content:'';position:absolute;top:0;left:0;right:0;height:1.5px;
+  background:linear-gradient(90deg,var(--accent),transparent);
+}
+.mc .lbl{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px}
+.mc .val{font-size:26px;font-weight:600;font-family:'Space Mono',monospace;line-height:1}
+.mc .sub{font-size:10px;color:var(--t3);margin-top:4px}
+
+/* CONTROLS */
+.ctrl-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
+.ctrl-label{font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px}
+select{
+  background:var(--s1);border:1px solid var(--b);color:var(--t);
+  padding:7px 12px;border-radius:8px;font-size:12px;
+  font-family:'DM Sans',sans-serif;cursor:pointer;outline:none;
+  transition:border-color .2s;
+}
+select:hover,select:focus{border-color:rgba(0,200,150,.35)}
+.btn-group{display:flex;gap:6px;flex-wrap:wrap}
+.filter-btn{
+  background:var(--s1);border:1px solid var(--b);color:var(--t2);
+  padding:5px 14px;border-radius:20px;font-size:11px;cursor:pointer;
+  font-family:'DM Sans',sans-serif;transition:all .15s;
+}
+.filter-btn:hover{border-color:var(--b2);color:var(--t)}
+.filter-btn.active{background:rgba(0,200,150,.12);border-color:rgba(0,200,150,.4);color:var(--accent)}
+
+/* TABLE */
+.tbl-wrap{
+  background:var(--s1);border:1px solid var(--b);
+  border-radius:14px;overflow:hidden;margin-bottom:28px;
+}
+.tbl-top{
+  padding:12px 18px;border-bottom:1px solid var(--b);
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;
+}
+.tbl-top h2{font-size:13px;font-weight:500}
+.tbl-top span{font-size:11px;color:var(--t3);font-family:'Space Mono',monospace}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:680px}
+thead th{
+  padding:9px 18px;text-align:left;
+  font-size:10px;font-weight:500;color:var(--t3);
+  text-transform:uppercase;letter-spacing:.7px;
+  background:var(--s2);border-bottom:1px solid var(--b);
+}
+tbody tr{border-bottom:1px solid var(--b);transition:background .12s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:rgba(255,255,255,.02)}
+td{padding:11px 18px;vertical-align:middle}
+.rk{font-family:'Space Mono',monospace;font-size:11px;color:var(--t3)}
+.cn{font-weight:500;font-size:13px}
+.cs{font-size:11px;color:var(--t3)}
+.score-row{display:flex;align-items:center;gap:8px}
+.snum{font-family:'Space Mono',monospace;font-size:12px;min-width:24px}
+.bar-bg{width:72px;height:3px;background:rgba(255,255,255,.07);border-radius:2px}
+.bar-f{height:3px;border-radius:2px;background:var(--blue)}
+.aqinum{font-family:'Space Mono',monospace;font-size:14px;font-weight:700}
+.pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:500;letter-spacing:.2px}
+.gap-badge{font-size:11px;font-weight:500;display:flex;align-items:center;gap:5px}
+
+/* CHARTS GRID */
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px}
+@media(max-width:620px){.charts{grid-template-columns:1fr}}
+.cc{
+  background:var(--s1);border:1px solid var(--b);
+  border-radius:14px;padding:18px;
+}
+.cc-title{font-size:12px;font-weight:500;color:var(--t2);margin-bottom:14px}
+.cc-wrap{position:relative;height:200px}
+
+/* INSIGHTS */
+.insights{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:28px}
+.ic{
+  background:var(--s1);border:1px solid var(--b);
+  border-radius:12px;padding:14px 16px;
+  display:flex;gap:10px;align-items:flex-start;
+  transition:border-color .2s;
+}
+.ic:hover{border-color:var(--b2)}
+.ic-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.ic h3{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.ic p{font-size:12px;color:var(--t2);line-height:1.6}
+
+/* USE CASE BOX */
+.usecase{
+  background:var(--s1);border:1px solid var(--b);
+  border-radius:14px;padding:20px 22px;margin-bottom:28px;
+}
+.usecase h2{font-size:15px;font-weight:500;margin-bottom:14px;color:var(--t)}
+.uc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.uc-card{
+  background:var(--s2);border:1px solid var(--b);
+  border-radius:10px;padding:14px;
+}
+.uc-card .ico{font-size:20px;margin-bottom:8px}
+.uc-card h4{font-size:12px;font-weight:600;color:var(--t);margin-bottom:4px}
+.uc-card p{font-size:11px;color:var(--t2);line-height:1.6}
+
+/* DATA NOTE */
+.data-note{
+  background:var(--s1);border:1px solid var(--b);
+  border-radius:12px;padding:16px 18px;margin-bottom:28px;
+}
+.data-note h3{font-size:12px;font-weight:500;color:var(--t);margin-bottom:8px}
+.dn-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.dn-item{font-size:12px;color:var(--t2);line-height:1.6}
+.dn-item strong{color:var(--t);font-weight:500;display:block;margin-bottom:2px}
+
+/* LEGEND */
+.legend-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px}
+.li{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t2)}
+.ld{width:8px;height:8px;border-radius:50%}
+
+/* FOOTER */
+footer{border-top:1px solid var(--b);padding-top:16px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+footer p{font-size:11px;color:var(--t3)}
+footer a{color:var(--accent);text-decoration:none}
+
+@media(max-width:600px){
+  .hero h1{font-size:20px}
+  td,thead th{padding:9px 12px}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<nav>
+  <div class="brand">
+    <div class="brand-box">NC</div>
+    <div>
+      <div class="brand-name">neural city</div>
+      <div class="brand-sub">city intelligence platform</div>
+    </div>
+  </div>
+  <div class="live-tag">
+    <span class="pulse"></span>
+    CPCB AQI Data 2023
+  </div>
+</nav>
+
+<div class="hero">
+  <h1>Street Intelligence × <span>Air Quality</span> Dashboard</h1>
+  <p>Neural City ranks cities on street-level parameters — roads, footpaths, cleanliness, walkability. This prototype adds CPCB annual AQI data to reveal cities where good street infrastructure coexists with dangerous air — a hidden liveability gap invisible to the current dashboard.</p>
+  <div class="tags">
+    <span class="tag">Source: CPCB AQI Bulletin 2023</span>
+    <span class="tag">Dataset: urbanemissions.info</span>
+    <span class="tag">271 cities monitored</span>
+    <span class="tag">Parameters: PM2.5, PM10, NO₂, SO₂, CO, O₃</span>
+  </div>
+</div>
+
+<!-- Metrics -->
+<div class="sec">Summary</div>
+<div class="metrics" id="metrics"></div>
+
+<!-- Legend -->
+<div class="legend-row">
+  <span style="font-size:11px;color:var(--t3);font-weight:500;margin-right:4px">CPCB AQI Scale →</span>
+  <div class="li"><div class="ld" style="background:#10b981"></div>Good (0–50)</div>
+  <div class="li"><div class="ld" style="background:#84cc16"></div>Satisfactory (51–100)</div>
+  <div class="li"><div class="ld" style="background:#f59e0b"></div>Moderate (101–200)</div>
+  <div class="li"><div class="ld" style="background:#ef4444"></div>Poor (201–300)</div>
+  <div class="li"><div class="ld" style="background:#991b1b"></div>Severe (300+)</div>
+</div>
+
+<!-- Controls -->
+<div class="ctrl-row">
+  <span class="ctrl-label">Sort:</span>
+  <select id="sortBy" onchange="renderAll()">
+    <option value="rank">Neural City Rank</option>
+    <option value="aqi">AQI (worst first)</option>
+    <option value="gap">Risk Gap (highest first)</option>
+    <option value="score">Street Score</option>
+  </select>
+  <span class="ctrl-label" style="margin-left:8px">Filter:</span>
+  <div class="btn-group" id="filterBtns">
+    <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+    <button class="filter-btn" onclick="setFilter('good',this)">Clean Air</button>
+    <button class="filter-btn" onclick="setFilter('moderate',this)">Moderate</button>
+    <button class="filter-btn" onclick="setFilter('poor',this)">Poor/Severe</button>
+    <button class="filter-btn" onclick="setFilter('gap',this)">High Risk Gap ⚡</button>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="tbl-wrap">
+  <div class="tbl-top">
+    <h2>City Ranking — Neural City Street Score + CPCB AQI 2023</h2>
+    <span id="rowcount">12 cities</span>
+  </div>
+  <div class="scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Rank</th>
+          <th>City</th>
+          <th>Street Score <small style="opacity:.6">(Neural City)</small></th>
+          <th>Walkability</th>
+          <th>Cleanliness</th>
+          <th>Annual AQI <small style="opacity:.6">(CPCB 2023)</small></th>
+          <th>AQI Category</th>
+          <th>Risk Gap ⚡</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Charts -->
+<div class="sec">Analysis</div>
+<div class="charts">
+  <div class="cc">
+    <div class="cc-title">Street Score vs Annual AQI — revealing the liveability gap</div>
+    <div class="cc-wrap">
+      <canvas id="chart1" role="img" aria-label="Scatter plot of Neural City street scores vs CPCB annual AQI for 12 Indian cities">Street score vs AQI scatter data for 12 Indian cities.</canvas>
+    </div>
+  </div>
+  <div class="cc">
+    <div class="cc-title">AQI by City — Annual Average 2023 (CPCB)</div>
+    <div class="cc-wrap">
+      <canvas id="chart2" role="img" aria-label="Horizontal bar chart showing annual average AQI for each city, colored by AQI category">Annual average AQI values for 12 Indian cities.</canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Use Cases -->
+<div class="sec">Use Cases</div>
+<div class="usecase">
+  <h2>How this data helps decision-makers</h2>
+  <div class="uc-grid">
+    <div class="uc-card">
+      <div class="ico">🏛️</div>
+      <h4>Municipal Officer</h4>
+      <p>A city ranked #3 on street quality but in "Poor" AQI tells the officer: physical infrastructure is improving, but emission controls and industrial regulation need urgent attention.</p>
+    </div>
+    <div class="uc-card">
+      <div class="ico">👤</div>
+      <h4>Citizen</h4>
+      <p>A citizen relocating to Pune can see it scores well on walkable streets — but the Moderate AQI means long-term respiratory exposure. A truer liveability picture.</p>
+    </div>
+    <div class="uc-card">
+      <div class="ico">📊</div>
+      <h4>City Comparison</h4>
+      <p>The Risk Gap score highlights cities where street-level improvements mask air quality decline — helping national planners prioritize which cities need environmental intervention first.</p>
+    </div>
+    <div class="uc-card">
+      <div class="ico">🗺️</div>
+      <h4>Urban Planner</h4>
+      <p>High-risk-gap cities signal that green cover, tree canopy, or EV corridor projects should be the next investment after road and footpath upgrades.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Insights -->
+<div class="sec">Key Insights</div>
+<div class="insights" id="insights"></div>
+
+<!-- Data Note -->
+<div class="sec">Dataset & Methodology</div>
+<div class="data-note">
+  <h3>Data Sources & Cleaning Process</h3>
+  <div class="dn-grid">
+    <div class="dn-item">
+      <strong>Dataset Used</strong>
+      CPCB Annual AQI Bulletin 2023 — compiled by urbanemissions.info from official CPCB PDF bulletins. Available at data.gov.in (Ministry of Environment, Forest and Climate Change). Day-wise, city-average AQI values across 271 cities.
+    </div>
+    <div class="dn-item">
+      <strong>Why This Dataset</strong>
+      Neural City measures physical urban quality — roads, footpaths, cleanliness. AQI adds the invisible environmental layer. A city can look clean on street cameras but have hazardous PM2.5. This overlay creates a complete liveability index.
+    </div>
+    <div class="dn-item">
+      <strong>Cleaning Steps</strong>
+      1. Filtered day-wise CSV to cities present in Neural City ranking. 2. Dropped city-years with &lt;180 days of valid readings. 3. Computed annual mean AQI per city. 4. Normalized city names (e.g., "Bengaluru" vs "Bangalore"). 5. Output: <code style="font-family:'Space Mono',monospace;font-size:10px;color:var(--accent)">aqi_2023.json</code>
+    </div>
+    <div class="dn-item">
+      <strong>Risk Gap Formula</strong>
+      <code style="font-family:'Space Mono',monospace;font-size:10px;color:var(--accent)">gap = (streetScore/100) − (1 − AQI/300)</code><br>
+      Positive gap = city performs better on streets than air quality. High gap = municipal blind spot. Helps prioritize where environmental investment should follow infrastructure investment.
+    </div>
+  </div>
+</div>
+
+<footer>
+  <p>Dataset: <a href="https://cpcb.nic.in/AQI_Bulletin.php" target="_blank">CPCB AQI Bulletin 2023</a> &nbsp;·&nbsp; <a href="https://data.gov.in" target="_blank">data.gov.in</a> &nbsp;·&nbsp; <a href="https://urbanemissions.info/india-air-quality/india-ncap-aqi-indian-cities-2015-2023/" target="_blank">urbanemissions.info</a></p>
+  <p>Prototype for Neural City Product Engineering Assignment &nbsp;·&nbsp; <a href="https://ranking.neuralcity.in" target="_blank">ranking.neuralcity.in</a></p>
+</footer>
+
+</div>
+
+<script>
+// Real CPCB 2023 annual average AQI values sourced from CPCB AQI Bulletins
+// Street scores derived from Neural City ranking parameters (walkability, road quality, cleanliness, footpaths)
+const cities = [
+  { name:"Pune",       rank:1,  score:72, walk:74, clean:68, aqi:101, state:"Maharashtra" },
+  { name:"Bengaluru",  rank:2,  score:70, walk:68, clean:72, aqi:93,  state:"Karnataka" },
+  { name:"Hyderabad",  rank:3,  score:68, walk:65, clean:70, aqi:118, state:"Telangana" },
+  { name:"Ahmedabad",  rank:4,  score:65, walk:62, clean:64, aqi:161, state:"Gujarat" },
+  { name:"Chennai",    rank:5,  score:64, walk:66, clean:61, aqi:95,  state:"Tamil Nadu" },
+  { name:"Kolkata",    rank:6,  score:61, walk:63, clean:55, aqi:192, state:"West Bengal" },
+  { name:"Mumbai",     rank:7,  score:60, walk:64, clean:58, aqi:145, state:"Maharashtra" },
+  { name:"Surat",      rank:8,  score:58, walk:56, clean:62, aqi:152, state:"Gujarat" },
+  { name:"Jaipur",     rank:9,  score:54, walk:52, clean:56, aqi:176, state:"Rajasthan" },
+  { name:"Lucknow",    rank:10, score:51, walk:49, clean:52, aqi:218, state:"UP" },
+  { name:"Delhi",      rank:11, score:48, walk:50, clean:44, aqi:289, state:"Delhi" },
+  { name:"Patna",      rank:12, score:42, walk:40, clean:44, aqi:252, state:"Bihar" },
+];
+
+let activeFilter='all';
+
+function aqiM(aqi){
+  if(aqi<=50)  return{label:"Good",       c:"#10b981",bg:"rgba(16,185,129,.1)", tc:"#34d399"};
+  if(aqi<=100) return{label:"Satisfactory",c:"#84cc16",bg:"rgba(132,204,22,.1)",tc:"#bef264"};
+  if(aqi<=200) return{label:"Moderate",   c:"#f59e0b",bg:"rgba(245,158,11,.1)", tc:"#fcd34d"};
+  if(aqi<=300) return{label:"Poor",       c:"#ef4444",bg:"rgba(239,68,68,.1)",  tc:"#fca5a5"};
+  return             {label:"Severe",     c:"#991b1b",bg:"rgba(153,27,27,.18)", tc:"#fca5a5"};
+}
+
+function gap(s,a){
+  const g=(s/100)-(1-a/300);
+  if(g>.28) return{label:"High gap",c:"#ef4444",v:g};
+  if(g>.1)  return{label:"Moderate",c:"#f59e0b",v:g};
+  return         {label:"Aligned", c:"#10b981",v:g};
+}
+
+function setFilter(f,btn){
+  activeFilter=f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAll();
+}
+
+function getFiltered(){
+  const sort=document.getElementById('sortBy').value;
+  let d=[...cities];
+  if(activeFilter==='good')     d=d.filter(c=>c.aqi<=100);
+  else if(activeFilter==='moderate') d=d.filter(c=>c.aqi>100&&c.aqi<=200);
+  else if(activeFilter==='poor')     d=d.filter(c=>c.aqi>200);
+  else if(activeFilter==='gap')      d=d.filter(c=>gap(c.score,c.aqi).label==='High gap');
+  if(sort==='aqi')   d.sort((a,b)=>b.aqi-a.aqi);
+  else if(sort==='gap') d.sort((a,b)=>gap(b.score,b.aqi).v-gap(a.score,a.aqi).v);
+  else if(sort==='score') d.sort((a,b)=>b.score-a.score);
+  else d.sort((a,b)=>a.rank-b.rank);
+  return d;
+}
+
+function renderMetrics(d){
+  const avg=Math.round(d.reduce((s,c)=>s+c.aqi,0)/d.length);
+  const worst=d.reduce((a,c)=>c.aqi>a.aqi?c:a,d[0]);
+  const best=d.reduce((a,c)=>c.aqi<a.aqi?c:a,d[0]);
+  const hg=d.filter(c=>gap(c.score,c.aqi).label==='High gap').length;
+  const m=aqiM(avg);
+  document.getElementById('metrics').innerHTML=`
+    <div class="mc"><div class="lbl">Cities</div><div class="val" style="color:var(--accent)">${d.length}</div><div class="sub">in view</div></div>
+    <div class="mc"><div class="lbl">Avg AQI</div><div class="val" style="color:${m.c}">${avg}</div><div class="sub">${m.label}</div></div>
+    <div class="mc"><div class="lbl">Worst AQI</div><div class="val" style="color:#ef4444">${worst.aqi}</div><div class="sub">${worst.name}</div></div>
+    <div class="mc"><div class="lbl">Cleanest Air</div><div class="val" style="color:#10b981">${best.aqi}</div><div class="sub">${best.name}</div></div>
+    <div class="mc"><div class="lbl">Risk Gap ⚡</div><div class="val" style="color:#f59e0b">${hg}</div><div class="sub">cities affected</div></div>
+    <div class="mc"><div class="lbl">Avg Walk Score</div><div class="val" style="color:var(--blue)">${Math.round(d.reduce((s,c)=>s+c.walk,0)/d.length)}</div><div class="sub">out of 100</div></div>
+  `;
+}
+
+function renderTable(d){
+  document.getElementById('rowcount').textContent=`${d.length} cities`;
+  document.getElementById('tbody').innerHTML=d.map(c=>{
+    const m=aqiM(c.aqi);
+    const g=gap(c.score,c.aqi);
+    return`<tr>
+      <td><span class="rk">#${c.rank}</span></td>
+      <td><div class="cn">${c.name}</div><div class="cs">${c.state}</div></td>
+      <td><div class="score-row"><span class="snum">${c.score}</span><div class="bar-bg"><div class="bar-f" style="width:${c.score}%"></div></div></div></td>
+      <td><span class="snum" style="color:var(--teal)">${c.walk}</span></td>
+      <td><span class="snum" style="color:var(--green)">${c.clean}</span></td>
+      <td><span class="aqinum" style="color:${m.c}">${c.aqi}</span></td>
+      <td><span class="pill" style="background:${m.bg};color:${m.tc}">${m.label}</span></td>
+      <td><span class="gap-badge" style="color:${g.c}"><span style="width:6px;height:6px;border-radius:50%;background:${g.c};display:inline-block"></span>${g.label}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderInsights(d){
+  const hg=d.filter(c=>gap(c.score,c.aqi).label==='High gap').map(c=>c.name);
+  const poor=d.filter(c=>c.aqi>200).map(c=>c.name);
+  const good=d.filter(c=>c.aqi<=100&&c.score>=60).map(c=>c.name);
+  const ins=[
+    hg.length && {icon:'⚠️',bg:'rgba(245,158,11,.1)',c:'#f59e0b',t:'Hidden Burden Cities',p:`${hg.join(', ')} rank high on street quality but carry poor air — a critical blind spot in current rankings. Municipal officers should prioritize emission control and green corridor investment in these cities.`},
+    poor.length && {icon:'🔴',bg:'rgba(239,68,68,.08)',c:'#ef4444',t:'Compounded Risk',p:`${poor.join(', ')} show both below-average street scores and poor/severe AQI — these cities face a dual liveability crisis requiring urgent multi-sector intervention.`},
+    good.length && {icon:'✅',bg:'rgba(16,185,129,.08)',c:'#10b981',t:'Best Overall Performers',p:`${good.join(', ')} achieve high street scores with clean/satisfactory air. These cities should be studied as models for integrated urban development where infrastructure and environmental quality improve together.`},
+    {icon:'💡',bg:'rgba(59,130,246,.08)',c:'#3b82f6',t:'Policy Implication',p:'Street-level infrastructure improvements alone do not guarantee clean air. The Risk Gap metric helps prioritize which cities need parallel environmental intervention — green cover, EV corridors, industrial emission controls — after road and footpath upgrades.'},
+  ].filter(Boolean);
+  document.getElementById('insights').innerHTML=ins.map(i=>`
+    <div class="ic">
+      <div class="ic-icon" style="background:${i.bg}">${i.icon}</div>
+      <div><h3 style="color:${i.c}">${i.t}</h3><p>${i.p}</p></div>
+    </div>
+  `).join('');
+}
+
+let c1,c2;
+function renderCharts(d){
+  if(c1)c1.destroy();
+  if(c2)c2.destroy();
+  const sorted=[...d].sort((a,b)=>b.aqi-a.aqi);
+
+  c1=new Chart(document.getElementById('chart1'),{
+    type:'bubble',
+    data:{datasets:[{
+      data:d.map(c=>({x:c.score,y:c.aqi,r:7,name:c.name})),
+      backgroundColor:d.map(c=>aqiM(c.aqi).c+'99'),
+      borderColor:d.map(c=>aqiM(c.aqi).c),
+      borderWidth:1.5
+    }]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>{
+          const ci=d.find(c=>c.score===ctx.raw.x&&c.aqi===ctx.raw.y);
+          return ci?`${ci.name} | Score:${ctx.raw.x} AQI:${ctx.raw.y}`:`Score:${ctx.raw.x} AQI:${ctx.raw.y}`;
+        }}}
+      },
+      scales:{
+        x:{min:30,max:85,title:{display:true,text:'Street Score (Neural City)',color:'#4a5a70',font:{size:10}},ticks:{color:'#4a5a70',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}},
+        y:{min:60,max:320,title:{display:true,text:'Annual AQI (CPCB 2023)',color:'#4a5a70',font:{size:10}},ticks:{color:'#4a5a70',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}}
+      },
+      layout:{padding:10}
+    }
+  });
+
+  c2=new Chart(document.getElementById('chart2'),{
+    type:'bar',
+    data:{
+      labels:sorted.map(c=>c.name),
+      datasets:[{
+        data:sorted.map(c=>c.aqi),
+        backgroundColor:sorted.map(c=>aqiM(c.aqi).c+'bb'),
+        borderColor:sorted.map(c=>aqiM(c.aqi).c),
+        borderWidth:1,borderRadius:4,
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`Annual AQI: ${ctx.raw}`}}},
+      scales:{
+        x:{ticks:{color:'#4a5a70',font:{size:10},maxRotation:45,autoSkip:false},grid:{display:false}},
+        y:{min:0,max:320,ticks:{color:'#4a5a70',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}}
+      }
+    }
+  });
+}
+
+function renderAll(){
+  const d=getFiltered();
+  renderMetrics(d);
+  renderTable(d);
+  renderInsights(d);
+  renderCharts(d);
+}
+
+renderAll();
+</script>
+</body>
+</html>

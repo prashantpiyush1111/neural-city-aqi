@@ -1,16 +1,14 @@
 name: PR Auto Checker
-
 on:
   pull_request:
     branches: [ main ]
-
 jobs:
   check:
     runs-on: ubuntu-latest
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Check index.html exists
         run: |
@@ -28,10 +26,8 @@ jobs:
           
           if [ -s /tmp/urls.txt ]; then
             while IFS= read -r url; do
-              STATUS=$(curl -o /dev/null -s -w "%{http_code}" --max-time 10 --connect-timeout 5 "$url" 2>/dev/null || echo "000")
-              if [ "$STATUS" = "000" ]; then
-                echo "⚠️ Link unreachable (timeout/error): $url"
-              elif [ "$STATUS" -ge 400 ]; then
+              STATUS=$(curl -o /dev/null -s -w "%{http_code}" --max-time 15 --connect-timeout 10 -L "$url" || echo "000")
+              if [ "$STATUS" -ge 400 ]; then
                 echo "❌ Broken link: $url (Status: $STATUS)"
                 exit 1
               else
@@ -39,14 +35,14 @@ jobs:
               fi
             done < /tmp/urls.txt
           else
-            echo "✅ No external links found to validate"
+            echo "✅ No external links found"
           fi
 
       - name: Check HTML is valid (not empty)
         run: |
           SIZE=$(wc -c < index.html)
           if [ "$SIZE" -lt 500 ]; then
-            echo "❌ index.html too small — might be empty or broken"
+            echo "❌ index.html too small"
             exit 1
           else
             echo "✅ index.html size OK: $SIZE bytes"

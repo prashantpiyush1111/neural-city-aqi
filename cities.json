@@ -1,0 +1,7 @@
+ 
+[
+  { "name": "Pune", "rank": 1, "score": 72, "walk": 74, "clean": 68, "aqi": 101, "state": "Maharashtra" },
+  { "name": "Bengaluru", "rank": 2, "score": 70, "walk": 68, "clean": 72, "aqi": 93, "state": "Karnataka" },
+  { "name": "Hyderabad", "rank": 3, "score": 68, "walk": 65, "clean": 70, "aqi": 118, "state": "Telangana" },
+  { "name": "Ahmedabad", "rank": 4, "score": 65, "walk": 62, "clean": 64, "aqi": 161, "state": "Gujarat" }
+]

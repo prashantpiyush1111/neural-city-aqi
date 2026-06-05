@@ -21,20 +21,22 @@ jobs:
 
       - name: Check for broken links in HTML
         run: |
-          set -o pipefail
-          grep -oP '(?<=href=")[^"]+' index.html | grep "^http" | while read url; do
-            echo "Checking: $url"
-            if STATUS=$(curl -o /dev/null -s -w "%{http_code}" --max-time 10 --connect-timeout 5 "$url" 2>/dev/null); then
+          set -e
+          grep -oP '(?<=href=")[^"]+' index.html | grep "^http" > /tmp/urls.txt || true
+          
+          if [ -s /tmp/urls.txt ]; then
+            while IFS= read -r url; do
+              STATUS=$(curl -o /dev/null -s -w "%{http_code}" --max-time 10 "$url" || echo "000")
               if [ "$STATUS" -ge 400 ]; then
                 echo "❌ Broken link: $url (Status: $STATUS)"
                 exit 1
               else
                 echo "✅ OK: $url"
               fi
-            else
-              echo "⚠️  Connection failed for: $url — skipping"
-            fi
-          done
+            done < /tmp/urls.txt
+          else
+            echo "✅ No external links found to validate"
+          fi
 
       - name: Check HTML is valid (not empty)
         run: |

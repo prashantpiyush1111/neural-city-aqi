@@ -1,7 +1,9 @@
 name: PR Auto Checker
+
 on:
   pull_request:
     branches: [ main ]
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -26,8 +28,10 @@ jobs:
           
           if [ -s /tmp/urls.txt ]; then
             while IFS= read -r url; do
-              STATUS=$(curl -o /dev/null -s -w "%{http_code}" --max-time 10 "$url" || echo "000")
-              if [ "$STATUS" -ge 400 ]; then
+              STATUS=$(curl -o /dev/null -s -w "%{http_code}" --max-time 10 --connect-timeout 5 "$url" 2>/dev/null || echo "000")
+              if [ "$STATUS" = "000" ]; then
+                echo "⚠️ Link unreachable (timeout/error): $url"
+              elif [ "$STATUS" -ge 400 ]; then
                 echo "❌ Broken link: $url (Status: $STATUS)"
                 exit 1
               else

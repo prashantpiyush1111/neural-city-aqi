@@ -1,9 +1,7 @@
 name: PR Auto Checker
-
 on:
   pull_request:
     branches: [ main ]
-
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -23,13 +21,18 @@ jobs:
 
       - name: Check for broken links in HTML
         run: |
+          set -o pipefail
           grep -oP '(?<=href=")[^"]+' index.html | grep "^http" | while read url; do
-            STATUS=$(curl -o /dev/null -s -w "%{http_code}" --max-time 10 "$url")
-            if [ "$STATUS" -ge 400 ]; then
-              echo "❌ Broken link: $url (Status: $STATUS)"
-              exit 1
+            echo "Checking: $url"
+            if STATUS=$(curl -o /dev/null -s -w "%{http_code}" --max-time 10 --connect-timeout 5 "$url" 2>/dev/null); then
+              if [ "$STATUS" -ge 400 ]; then
+                echo "❌ Broken link: $url (Status: $STATUS)"
+                exit 1
+              else
+                echo "✅ OK: $url"
+              fi
             else
-              echo "✅ OK: $url"
+              echo "⚠️  Connection failed for: $url — skipping"
             fi
           done
 

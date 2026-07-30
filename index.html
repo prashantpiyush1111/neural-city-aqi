@@ -6,6 +6,8 @@
 <title>Neural City — AQI + Street Intelligence Dashboard</title>
 <link href="http://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
 <script src="http://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
 :root{
   --bg:#060a0f;
@@ -118,6 +120,18 @@ select:hover,select:focus{border-color:rgba(0,200,150,.35)}
 .filter-btn:hover{border-color:var(--b2);color:var(--t)}
 .filter-btn.active{background:rgba(0,200,150,.12);border-color:rgba(0,200,150,.4);color:var(--accent)}
 
+/* EXPORT BUTTONS */
+.export-row{display:flex;gap:8px;margin-left:auto}
+.export-btn{
+  display:flex;align-items:center;gap:6px;
+  background:var(--s2);border:1px solid var(--b2);color:var(--t);
+  padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;
+  font-family:'DM Sans',sans-serif;font-weight:500;transition:all .15s;
+}
+.export-btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(0,200,150,.06)}
+.export-btn svg{width:13px;height:13px}
+.export-btn.pdf:hover{border-color:#ef4444;color:#ef4444;background:rgba(239,68,68,.06)}
+
 /* TABLE */
 .tbl-wrap{
   background:var(--s1);border:1px solid var(--b);
@@ -213,6 +227,8 @@ footer a{color:var(--accent);text-decoration:none}
 @media(max-width:600px){
   .hero h1{font-size:20px}
   td,thead th{padding:9px 12px}
+  .export-row{margin-left:0;width:100%}
+  .export-btn{flex:1;justify-content:center}
 }
 </style>
 </head>
@@ -274,6 +290,16 @@ footer a{color:var(--accent);text-decoration:none}
     <button class="filter-btn" onclick="setFilter('moderate',this)">Moderate</button>
     <button class="filter-btn" onclick="setFilter('poor',this)">Poor/Severe</button>
     <button class="filter-btn" onclick="setFilter('gap',this)">High Risk Gap ⚡</button>
+  </div>
+  <div class="export-row">
+    <button class="export-btn csv" onclick="exportCSV()" title="Download filtered data as CSV">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+      CSV
+    </button>
+    <button class="export-btn pdf" onclick="exportPDF()" title="Download filtered data as PDF report">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+      PDF
+    </button>
   </div>
 </div>
 
@@ -386,7 +412,7 @@ footer a{color:var(--accent);text-decoration:none}
 <script>
 // Real CPCB 2023 annual average AQI values sourced from CPCB AQI Bulletins
 // Street scores derived from Neural City ranking parameters (walkability, road quality, cleanliness, footpaths)
- let cities = [];
+let cities = [];
 
 fetch('cities.json')
   .then(response => response.json())
@@ -536,6 +562,76 @@ function renderCharts(d){
       }
     }
   });
+}
+
+/* ---------- ISSUE #5: CSV / PDF EXPORT ---------- */
+
+function exportCSV(){
+  const d = getFiltered();
+  if(!d.length){ alert('No data to export for current filter.'); return; }
+
+  const headers = ['Rank','City','State','Street Score','Walkability','Cleanliness','Annual AQI','AQI Category','Risk Gap'];
+  const rows = d.map(c=>{
+    const m = aqiM(c.aqi);
+    const g = gap(c.score,c.aqi);
+    return [c.rank, c.name, c.state, c.score, c.walk, c.clean, c.aqi, m.label, g.label];
+  });
+
+  let csv = headers.join(',') + '\n';
+  rows.forEach(r=>{
+    csv += r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',') + '\n';
+  });
+
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `neural-city-aqi-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function exportPDF(){
+  const d = getFiltered();
+  if(!d.length){ alert('No data to export for current filter.'); return; }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'landscape' });
+
+  doc.setFontSize(14);
+  doc.setTextColor(20,20,20);
+  doc.text('Neural City — Street Score + CPCB AQI 2023', 14, 15);
+
+  doc.setFontSize(9);
+  doc.setTextColor(120);
+  const filterLabel = activeFilter === 'all' ? 'All Cities' : activeFilter;
+  doc.text(`Generated: ${new Date().toLocaleString()}  |  Filter: ${filterLabel}  |  ${d.length} cities`, 14, 21);
+
+  const headers = [['Rank','City','State','Street Score','Walkability','Cleanliness','Annual AQI','AQI Category','Risk Gap']];
+  const rows = d.map(c=>{
+    const m = aqiM(c.aqi);
+    const g = gap(c.score,c.aqi);
+    return [c.rank, c.name, c.state, c.score, c.walk, c.clean, c.aqi, m.label, g.label];
+  });
+
+  doc.autoTable({
+    head: headers,
+    body: rows,
+    startY: 26,
+    styles: { fontSize: 8, cellPadding: 3 },
+    headStyles: { fillColor: [19,31,48], textColor: 255 },
+    alternateRowStyles: { fillColor: [245,247,250] },
+    margin: { left: 14, right: 14 }
+  });
+
+  const finalY = doc.lastAutoTable.finalY || 26;
+  doc.setFontSize(8);
+  doc.setTextColor(150);
+  doc.text('Source: CPCB AQI Bulletin 2023 | data.gov.in | urbanemissions.info', 14, finalY + 10);
+
+  doc.save(`neural-city-aqi-${new Date().toISOString().slice(0,10)}.pdf`);
 }
 
 function renderAll(){
